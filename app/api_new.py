@@ -1,46 +1,21 @@
 # app/api.py - Enhanced API with database integration and security
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordRequestForm
 import os
 import shutil
 import json
 import time
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from datetime import datetime
+from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 
 from app.embedding import create_faiss_index
 from app.rag import get_answer
 from app.security import SecurityValidator, validate_upload_files
 from app.file_processor import DocumentProcessor
-from app.database import get_db, Document, Query, User, Task, create_tables
+from app.database import get_db, Document, Query, create_tables
 from app.utils import log_performance
-from app.auth import (
-    get_current_user, get_current_active_user, require_admin,
-    authenticate_user, create_access_token, get_password_hash,
-    check_upload_rate_limit, check_query_rate_limit
-)
-from app.cache import query_cache, get_cache_stats, clear_all_cache
-from app.monitoring import (
-    monitor_operation, get_monitoring_dashboard, 
-    log_security_event, monitor_performance
-)
-try:
-    from app.hybrid_search import search_documents, initialize_hybrid_search
-    HYBRID_SEARCH_AVAILABLE = True
-except ImportError:
-    HYBRID_SEARCH_AVAILABLE = False
-    
-try:
-    from app.async_processing import (
-        submit_async_task, get_task_status, cancel_task, 
-        get_all_tasks, cleanup_old_tasks
-    )
-    ASYNC_PROCESSING_AVAILABLE = True
-except ImportError:
-    ASYNC_PROCESSING_AVAILABLE = False
 
 # Create database tables
 create_tables()
@@ -209,7 +184,7 @@ async def list_documents(db: Session = Depends(get_db)):
         
         document_list = []
         for doc in documents:
-            metadata = json.loads(doc.file_metadata) if doc.file_metadata else {}
+            metadata = json.loads(doc.metadata) if doc.metadata else {}
             
             document_list.append({
                 "id": doc.id,
@@ -294,274 +269,3 @@ async def get_statistics(db: Session = Depends(get_db)):
         
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Failed to get statistics: {str(e)}"})
-
-@router.post("/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """Token login endpoint"""
-    user = authenticate_user(db, form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-    
-    # Check if the user is active
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="User is inactive")
-    
-    # Create access token
-    access_token_expires = timedelta(minutes=30)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@router.get("/users/me")
-async def read_users_me(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get current user information"""
-    return current_user
-
-@router.get("/users")
-async def read_users(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get list of users (admin only)"""
-    users = db.query(User).all()
-    return users
-
-@router.post("/users")
-async def create_user(
-    username: str = Form(...),
-    password: str = Form(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Create new user (admin only)"""
-    # Check if the current user is an admin
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    # Hash the password
-    hashed_password = get_password_hash(password)
-    
-    # Create new user record
-    new_user = User(
-        username=username,
-        hashed_password=hashed_password,
-        is_active=True,
-        is_admin=False
-    )
-    
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    return new_user
-
-@router.put("/users/me")
-async def update_user(
-    username: Optional[str] = Form(None),
-    password: Optional[str] = Form(None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Update current user information"""
-    if username:
-        current_user.username = username
-    if password:
-        current_user.hashed_password = get_password_hash(password)
-    
-    db.commit()
-    db.refresh(current_user)
-    
-    return current_user
-
-@router.post("/tasks/submit")
-async def submit_task(
-    background_tasks: BackgroundTasks,
-    query: str = Form(...),
-    k: int = Form(3),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Submit a new task for processing"""
-    task = {
-        "query": query,
-        "k": k,
-        "user_id": current_user.id,
-        "status": "pending",
-        "result": None,
-        "error": None,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
-    }
-    
-    # Add task to database
-    db.add(task)
-    db.commit()
-    db.refresh(task)
-    
-    # Submit task to background processor
-    background_tasks.add_task(process_query_task, task.id)
-    
-    return {"task_id": task.id, "status": "submitted"}
-
-@router.get("/tasks/{task_id}")
-async def get_task(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get task status and result"""
-    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    
-    return task
-
-@router.get("/tasks")
-async def list_tasks(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """List all tasks for the current user"""
-    tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
-    return tasks
-
-@router.delete("/tasks/{task_id}")
-async def delete_task(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Delete a task"""
-    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    
-    db.delete(task)
-    db.commit()
-    
-    return {"detail": "Task deleted"}
-
-@router.post("/search")
-async def search(
-    query: str = Form(...),
-    k: int = Form(3),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Search documents using hybrid search"""
-    if not HYBRID_SEARCH_AVAILABLE:
-        raise HTTPException(status_code=501, detail="Hybrid search not available")
-    
-    # Perform hybrid search
-    results = search_documents(query, k=k)
-    
-    return {
-        "query": query,
-        "results": results
-    }
-
-@router.get("/cache/stats")
-async def cache_stats(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get cache statistics"""
-    stats = get_cache_stats()
-    return stats
-
-@router.post("/cache/clear")
-async def cache_clear(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Clear all cache"""
-    clear_all_cache()
-    return {"detail": "Cache cleared"}
-
-@router.get("/monitoring/dashboard")
-async def monitoring_dashboard(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get monitoring dashboard data"""
-    dashboard_data = get_monitoring_dashboard()
-    return dashboard_data
-
-@router.post("/monitoring/log_security_event")
-async def log_security(
-    event_type: str = Form(...),
-    description: str = Form(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Log a security event"""
-    log_security_event(event_type, description)
-    return {"detail": "Security event logged"}
-
-@router.post("/monitoring/monitor_performance")
-async def monitor_perf(
-    operation_name: str = Form(...),
-    duration_ms: float = Form(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Monitor performance of an operation"""
-    monitor_performance(operation_name, duration_ms)
-    return {"detail": "Performance monitored"}
-
-# Background task functions
-def process_query_task(task_id: str, query: str, document_paths: List[str], k: int = 3):
-    """Background task for processing queries"""
-    from app.rag import get_answer
-    from app.database import SessionLocal, Task
-    
-    db = SessionLocal()
-    try:
-        # Update task status
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.state = "running"
-            task.started_at = datetime.utcnow()
-            task.progress = 10.0
-            db.commit()
-        
-        # Process query
-        answer = get_answer(query, document_paths, k=k)
-        
-        # Update task with result
-        if task:
-            task.result = json.dumps({"answer": answer})
-            task.state = "completed"
-            task.completed_at = datetime.utcnow()
-            task.progress = 100.0
-            db.commit()
-            
-    except Exception as e:
-        if task:
-            task.error_message = str(e)
-            task.state = "failed"
-            task.completed_at = datetime.utcnow()
-            db.commit()
-    finally:
-        db.close()
-
-@router.on_event("startup")
-async def startup_event():
-    """Application startup event"""
-    # Initialize hybrid search if available
-    if HYBRID_SEARCH_AVAILABLE:
-        initialize_hybrid_search()
-    
-    # Cleanup old tasks
-    if ASYNC_PROCESSING_AVAILABLE:
-        cleanup_old_tasks()
-
-@router.on_event("shutdown")
-async def shutdown_event():
-    """Application shutdown event"""
-    pass

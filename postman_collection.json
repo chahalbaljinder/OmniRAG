@@ -1,0 +1,693 @@
+{
+  "info": {
+    "name": "RAG Pipeline API - Enhanced",
+    "description": "Complete API collection for the RAG Pipeline with Gemini 2.0 Flash",
+    "version": "2.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "username",
+                  "value": "testuser",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "test@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "password123",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v2/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "auth", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', response.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "username",
+                  "value": "testuser",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "password123",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v2/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', response.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create API Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Test API Key",
+                  "type": "text"
+                },
+                {
+                  "key": "expires_days",
+                  "value": "30",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v2/auth/api-keys",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "auth", "api-keys"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('api_key', response.api_key);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "File Upload",
+      "item": [
+        {
+          "name": "Upload Documents (Sync)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "async_processing",
+                  "value": "false",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v2/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "upload"]
+            }
+          }
+        },
+        {
+          "name": "Upload Documents (Async)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "async_processing",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v2/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "upload"]
+            }
+          }
+        },
+        {
+          "name": "Check Upload Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v2/upload/status/{task_id}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "upload", "status", "{task_id}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Document Queries",
+      "item": [
+        {
+          "name": "Query Documents (Basic)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "query",
+                  "value": "What are the main topics discussed in the documents?",
+                  "type": "text"
+                },
+                {
+                  "key": "k",
+                  "value": "3",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v2/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "query"]
+            }
+          }
+        },
+        {
+          "name": "Query Documents (Hybrid Search)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "query",
+                  "value": "machine learning algorithms",
+                  "type": "text"
+                },
+                {
+                  "key": "k",
+                  "value": "5",
+                  "type": "text"
+                },
+                {
+                  "key": "search_type",
+                  "value": "hybrid",
+                  "type": "text"
+                },
+                {
+                  "key": "use_cache",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "expand_query",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v2/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "query"]
+            }
+          }
+        },
+        {
+          "name": "Query Documents (Async)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "query",
+                  "value": "complex analysis of research methodologies",
+                  "type": "text"
+                },
+                {
+                  "key": "async_processing",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "search_type",
+                  "value": "hybrid",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v2/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "query"]
+            }
+          }
+        },
+        {
+          "name": "Check Query Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v2/query/status/{task_id}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "query", "status", "{task_id}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Document Management",
+      "item": [
+        {
+          "name": "List Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v2/documents?skip=0&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "documents"],
+              "query": [
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List My Documents Only",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v2/documents?owner_only=true",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "documents"],
+              "query": [
+                {
+                  "key": "owner_only",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Document",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v2/documents/{document_id}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "documents", "{document_id}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "System Monitoring",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v2/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "health"]
+            }
+          }
+        },
+        {
+          "name": "System Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v2/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Performance Metrics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v2/performance-metrics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "performance-metrics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Endpoints",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v2/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "admin", "users"]
+            }
+          }
+        },
+        {
+          "name": "System Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v2/admin/system-logs?level=ERROR&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "admin", "system-logs"],
+              "query": [
+                {
+                  "key": "level",
+                  "value": "ERROR"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "API Key Authentication",
+      "item": [
+        {
+          "name": "Query with API Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "query",
+                  "value": "test query with API key",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v2/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "query"]
+            }
+          }
+        },
+        {
+          "name": "Upload with API Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v2/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "upload"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Basic API (v1)",
+      "item": [
+        {
+          "name": "Upload (Basic)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "upload"]
+            }
+          }
+        },
+        {
+          "name": "Query (Basic)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "query",
+                  "value": "What is this document about?",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "query"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
