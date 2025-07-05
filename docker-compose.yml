@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  rag-app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./indexes:/app/indexes
+    env_file:
+      - .env
