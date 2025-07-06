@@ -295,6 +295,103 @@ async def get_statistics(db: Session = Depends(get_db)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Failed to get statistics: {str(e)}"})
 
+@router.post("/auth/register")
+async def register_user(
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """User registration endpoint"""
+    try:
+        # Check if user already exists
+        existing_user = db.query(User).filter(User.username == username).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Username already registered")
+        
+        # Check if email already exists
+        existing_email = db.query(User).filter(User.email == email).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Hash the password
+        hashed_password = get_password_hash(password)
+        
+        # Create new user
+        new_user = User(
+            username=username,
+            email=email,
+            hashed_password=hashed_password,
+            is_active=True,
+            role="user"
+        )
+        
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        return {
+            "message": "User registered successfully",
+            "user_id": new_user.id,
+            "username": new_user.username
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+@router.post("/auth/login")
+async def login_user(
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """User login endpoint"""
+    try:
+        user = authenticate_user(db, username, password)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+        
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="User account is inactive")
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=30)
+        access_token = create_access_token(
+            data={"sub": str(user.id), "username": user.username, "role": user.role}, 
+            expires_delta=access_token_expires
+        )
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user_id": user.id,
+            "username": user.username,
+            "role": user.role
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+
+@router.get("/auth/me")
+async def get_current_user_info(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get current user information"""
+    return {
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None
+    }
+
 @router.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Token login endpoint"""
@@ -513,6 +610,34 @@ async def monitor_perf(
     """Monitor performance of an operation"""
     monitor_performance(operation_name, duration_ms)
     return {"detail": "Performance monitored"}
+
+@router.get("/document/{document_id}")
+async def get_document_details(document_id: int, db: Session = Depends(get_db)):
+    """Get detailed information about a specific document"""
+    try:
+        document = db.query(Document).filter(Document.id == document_id).first()
+        
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        metadata = json.loads(document.file_metadata) if document.file_metadata else {}
+        
+        return {
+            "id": document.id,
+            "filename": document.filename,
+            "upload_date": document.upload_date.isoformat(),
+            "file_size": document.file_size,
+            "page_count": document.page_count,
+            "chunk_count": document.chunk_count,
+            "file_hash": document.file_hash,
+            "metadata": metadata,
+            "owner_id": getattr(document, 'owner_id', None)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get document details: {str(e)}")
 
 # Background task functions
 def process_query_task(task_id: str, query: str, document_paths: List[str], k: int = 3):

@@ -34,9 +34,19 @@ class EnhancedEmbeddingManager:
             # Extract chunk contents
             chunk_contents = [chunk["content"] for chunk in chunks]
             
+            # Check if we have any valid chunks
+            if not chunk_contents or len(chunk_contents) == 0:
+                logger.warning(f"No chunks to create index for file: {file_path}")
+                return 0
+            
             # Generate embeddings
             embeddings = self.embedding_model.encode(chunk_contents)
             embeddings = np.array(embeddings).astype('float32')
+            
+            # Check if embeddings are valid
+            if embeddings.size == 0 or len(embeddings.shape) < 2:
+                logger.warning(f"Invalid embeddings for file: {file_path}")
+                return 0
             
             # Create FAISS index
             index = faiss.IndexFlatIP(EMBEDDING_DIM)  # Inner product for cosine similarity

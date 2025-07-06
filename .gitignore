@@ -103,6 +103,12 @@ faiss_index/
 *.index
 *.meta
 
+# Database files
+*.db
+rag_database.db
+test.db
+test_enhanced.db
+
 # VS Code
 .vscode/
 

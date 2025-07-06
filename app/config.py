@@ -3,6 +3,7 @@
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 class Settings(BaseSettings):
     # API Configuration
@@ -17,6 +18,13 @@ class Settings(BaseSettings):
     jwt_secret_key: Optional[str] = None
     jwt_algorithm: str = "HS256"
     jwt_expiration_hours: int = 24
+    secret_key: Optional[str] = None
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    
+    # Redis Configuration
+    redis_url: str = "redis://localhost:6379/0"
+    redis_enabled: bool = False
     
     # File Upload Configuration
     max_upload_size: int = 100 * 1024 * 1024  # 100MB
@@ -37,6 +45,8 @@ class Settings(BaseSettings):
     chunking_strategy: str = "word"  # word, sentence, paragraph
     similarity_threshold: float = 0.1
     max_search_results: int = 5
+    max_chunk_size: int = 1000
+    overlap_size: int = 200
     
     # Rate Limiting
     rate_limit_uploads: str = "10/minute"
@@ -57,9 +67,12 @@ class Settings(BaseSettings):
     log_file: Optional[str] = None
     enable_performance_logging: bool = True
     
-    class Config:
-        env_file = ".env"
-        env_prefix = "RAG_"
+    # API Configuration
+    api_v1_prefix: str = "/api/v1"
+    docs_url: str = "/docs"
+    redoc_url: str = "/redoc"
+    
+    model_config = ConfigDict(env_file=".env", env_prefix="RAG_")
 
 # Global settings instance
 settings = Settings()

@@ -1,6 +1,9 @@
 # tests/test_enhanced_api.py - Comprehensive tests for enhanced API
 
+import sys
 import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pytest
 import tempfile
 import shutil
@@ -10,12 +13,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
-from app.database import Base, get_db, User, Document, Query, APIKey
+from app.database import Base, get_db, User, Document, Query, APIKey, Task
 from app.auth import hash_password, create_access_token, hash_api_key, generate_api_key
 from app.config import settings
 
-# Test database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_enhanced.db"
+# Test database setup - use same DB as other tests for consistency
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -28,6 +31,33 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
+def cleanup_test_data():
+    """Clean up test data between tests"""
+    db = TestingSessionLocal()
+    try:
+        # Clear all tables
+        db.query(Query).delete()
+        db.query(Document).delete()
+        db.query(APIKey).delete()
+        db.query(Task).delete()
+        db.query(User).delete()
+        db.commit()
+        
+        # Clean up uploaded files
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
+        if os.path.exists(upload_dir):
+            for file in os.listdir(upload_dir):
+                file_path = os.path.join(upload_dir, file)
+                try:
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                except:
+                    pass  # Ignore cleanup errors
+    except Exception as e:
+        print(f"Cleanup error: {e}")
+    finally:
+        db.close()
+
 @pytest.fixture(scope="module")
 def setup_database():
     """Setup test database"""
@@ -35,11 +65,13 @@ def setup_database():
     yield
     Base.metadata.drop_all(bind=engine)
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def client():
-    """Test client"""
+    """Test client with cleanup"""
+    cleanup_test_data()  # Clean before test
     with TestClient(app) as test_client:
         yield test_client
+    cleanup_test_data()  # Clean after test
 
 @pytest.fixture
 def test_user():
