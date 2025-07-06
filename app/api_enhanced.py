@@ -88,6 +88,8 @@ async def register_user(
             }
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         error_tracker.track_error(e, {"endpoint": "register", "username": username})

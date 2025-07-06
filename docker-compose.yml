@@ -1,12 +1,64 @@
+# Docker Compose for RAG Pipeline
 version: '3.8'
 
 services:
+  # Main RAG Pipeline Application
   rag-app:
     build: .
+    container_name: rag-pipeline-app
     ports:
       - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
     volumes:
       - ./uploads:/app/uploads
       - ./indexes:/app/indexes
+      - ./logs:/app/logs
+      - ./rag_database.db:/app/rag_database.db
     env_file:
       - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - rag-network
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: rag-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - rag-network
+    command: redis-server --appendonly yes
+
+  # PostgreSQL (optional - for production database)
+  postgres:
+    image: postgres:15-alpine
+    container_name: rag-postgres
+    environment:
+      POSTGRES_DB: rag_pipeline
+      POSTGRES_USER: rag_user
+      POSTGRES_PASSWORD: rag_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - rag-network
+    profiles:
+      - postgres
+
+volumes:
+  redis-data:
+  postgres-data:
+
+networks:
+  rag-network:
+    driver: bridge

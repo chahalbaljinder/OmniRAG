@@ -1,0 +1,107 @@
+# Production Docker Compose with all services
+version: '3.8'
+
+services:
+  # Main RAG Pipeline Application
+  rag-app:
+    build: .
+    container_name: rag-pipeline-app
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./uploads:/app/uploads
+      - ./indexes:/app/indexes
+      - ./logs:/app/logs
+      - ./rag_database.db:/app/rag_database.db
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    networks:
+      - rag-network
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: rag-redis
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - rag-network
+    command: redis-server --appendonly yes
+
+  # PostgreSQL for production database
+  postgres:
+    image: postgres:15-alpine
+    container_name: rag-postgres
+    environment:
+      POSTGRES_DB: rag_pipeline
+      POSTGRES_USER: rag_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_123}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - rag-network
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: rag-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - rag-app
+    restart: unless-stopped
+    networks:
+      - rag-network
+
+  # Monitoring with Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rag-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    networks:
+      - rag-network
+    profiles:
+      - monitoring
+
+  # Grafana for dashboards (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rag-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - rag-network
+    profiles:
+      - monitoring
+
+volumes:
+  redis-data:
+  postgres-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  rag-network:
+    driver: bridge
