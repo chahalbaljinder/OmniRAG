@@ -1,6 +1,6 @@
 # 🔍 RAG Pipeline API - Production Ready
 
-A comprehensive Retrieval-Augmented Generation (RAG) pipeline that allows users to upload documents and ask questions based on their content. Built with FastAPI, FAISS vector database, and Google Gemini 2.0 Flash LLM. **86.8% test coverage** and production-ready deployment.
+A comprehensive Retrieval-Augmented Generation (RAG) pipeline that allows users to upload documents and ask questions based on their content. Built with FastAPI, FAISS vector database, and Google Gemini 2.0 Flash LLM. **96.2% test coverage** and production-ready deployment.
 
 ---
 
@@ -11,7 +11,7 @@ A comprehensive Retrieval-Augmented Generation (RAG) pipeline that allows users 
 - **🔍 RAG Pipeline**: Semantic search with LLM-powered response generation  
 - **🌐 REST API**: FastAPI with comprehensive endpoints
 - **🐳 Docker Ready**: Complete containerization with Docker Compose
-- **🧪 Tested**: 86.8% test pass rate (46/53 tests)
+- **🧪 Tested**: 96.2% test pass rate (51/53 tests)
 
 ### Advanced Features 🚀
 - **🔐 Authentication**: JWT tokens, API keys, role-based access
