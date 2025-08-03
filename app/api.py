@@ -7,9 +7,13 @@ import os
 import shutil
 import json
 import time
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 from app.embedding import create_faiss_index
 from app.rag import get_answer
@@ -132,6 +136,16 @@ async def upload_files(files: List[UploadFile] = File(...), db: Session = Depend
 
         duration = time.time() - start_time
         log_performance("FILE_UPLOAD", duration, files=len(files), successful=len(uploaded_documents))
+        
+        # Update global FAISS index if any documents were successfully uploaded
+        if uploaded_documents:
+            try:
+                from app.embedding import create_global_faiss_index
+                global_chunks = create_global_faiss_index()
+                logger.info(f"Updated global FAISS index with {global_chunks} total chunks")
+            except Exception as e:
+                logger.error(f"Failed to update global FAISS index: {str(e)}")
+                # Don't fail the upload if global index update fails
 
         response_data = {
             "status": "completed",
@@ -169,15 +183,23 @@ async def query_documents(query: str = Form(...), k: int = Form(3), db: Session 
         doc_paths = [doc.file_path for doc in documents]
         
         try:
-            # Get answer from RAG system
-            answer = get_answer(query, doc_paths, k=k)
+            # Get answer from enhanced RAG system with source metadata
+            from app.rag import get_answer_with_sources
+            
+            result = get_answer_with_sources(query, top_k=k)
+            
+            # Check if there was an error
+            if "error" in result:
+                return JSONResponse(status_code=500, content={
+                    "error": f"Query processing failed: {result.get('error', 'Unknown error')}"
+                })
             
             # Log query to database
             query_record = Query(
                 query_text=query,
-                response_text=answer,
+                response_text=result["answer"],
                 processing_time=time.time() - start_time,
-                documents_used=json.dumps([doc.id for doc in documents]),
+                documents_used=json.dumps([source["document_id"] for source in result["sources"]]),
                 timestamp=datetime.utcnow()
             )
             
@@ -188,11 +210,14 @@ async def query_documents(query: str = Form(...), k: int = Form(3), db: Session 
             log_performance("QUERY_PROCESSING", duration, documents=len(documents))
 
             return {
-                "query": query,
-                "answer": answer,
+                "query": result["query"],
+                "answer": result["answer"],
+                "sources": result["sources"],
+                "total_sources": result["total_sources"],
                 "documents_searched": len(documents),
                 "processing_time": round(duration, 3),
-                "query_id": query_record.id
+                "query_id": query_record.id,
+                "timestamp": result["timestamp"]
             }
             
         except Exception as e:
@@ -674,6 +699,54 @@ def process_query_task(task_id: str, query: str, document_paths: List[str], k: i
             db.commit()
     finally:
         db.close()
+
+@router.post("/admin/recreate-index")
+async def recreate_global_index():
+    """Admin endpoint to recreate the global FAISS index"""
+    try:
+        from app.embedding import create_global_faiss_index
+        
+        # Recreate the global index
+        chunk_count = create_global_faiss_index()
+        
+        return {
+            "message": "Global FAISS index recreated successfully",
+            "total_chunks": chunk_count,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error recreating global index: {str(e)}")
+        return JSONResponse(status_code=500, content={
+            "error": f"Failed to recreate global index: {str(e)}"
+        })
+
+@router.post("/admin/test-metadata-extraction")
+async def test_metadata_extraction(file_path: str = Form(...)):
+    """Admin endpoint to test case metadata extraction from a document"""
+    try:
+        from app.file_processor import DocumentProcessor
+        
+        if not os.path.exists(file_path):
+            return JSONResponse(status_code=400, content={
+                "error": "File not found"
+            })
+        
+        # Extract text and metadata
+        text, metadata = DocumentProcessor.extract_text_from_pdf(file_path)
+        
+        return {
+            "file_path": file_path,
+            "text_length": len(text),
+            "extracted_metadata": metadata,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error testing metadata extraction: {str(e)}")
+        return JSONResponse(status_code=500, content={
+            "error": f"Failed to extract metadata: {str(e)}"
+        })
 
 @router.on_event("startup")
 async def startup_event():

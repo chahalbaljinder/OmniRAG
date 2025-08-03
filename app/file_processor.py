@@ -82,10 +82,164 @@ class DocumentProcessor:
                 metadata["total_text_length"] = len(text)
                 metadata["extractable_pages"] = sum(1 for p in page_texts if p.get("has_text", False))
                 
+                # Extract case-specific metadata if available
+                case_metadata = DocumentProcessor.extract_case_metadata(text)
+                metadata.update(case_metadata)
+                
                 return text.strip(), metadata
                 
         except Exception as e:
             raise Exception(f"Error processing PDF {file_path}: {str(e)}")
+    
+    @staticmethod
+    def extract_case_metadata(text: str) -> Dict[str, Any]:
+        """Extract comprehensive case-specific metadata from document text"""
+        import re
+        
+        case_metadata = {}
+        
+        # Look for case names (common patterns)
+        case_name_patterns = [
+            r'(?:Case|Matter|Suit)?\s*(?:No\.?|Number)?\s*:?\s*([A-Z][a-zA-Z\s&]+v\.?\s+[A-Z][a-zA-Z\s&]+)',
+            r'([A-Z][a-zA-Z\s&]+\s+v\.?\s+[A-Z][a-zA-Z\s&]+)',
+            r'In\s+(?:the\s+)?(?:matter\s+)?of\s+([A-Z][a-zA-Z\s&,]+)',
+            r'RE:\s*([A-Z][a-zA-Z\s&,]+)',
+            r'BETWEEN\s*:\s*([A-Z][a-zA-Z\s&,]+)',
+            r'PETITIONER\s*:\s*([A-Z][a-zA-Z\s&,]+)',
+        ]
+        
+        for pattern in case_name_patterns:
+            match = re.search(pattern, text[:3000], re.IGNORECASE)
+            if match:
+                case_metadata['Case_Name'] = match.group(1).strip()
+                break
+        
+        # Look for case numbers with more comprehensive patterns
+        case_number_patterns = [
+            r'(?:Case|Suit|Matter|Docket|File)\s*(?:No\.?|Number)\s*:?\s*([\w\d\-/\(\)]+)',
+            r'Civil\s*(?:Action|Case)\s*(?:No\.?)?\s*:?\s*([\w\d\-/\(\)]+)',
+            r'Criminal\s*(?:Case)?\s*(?:No\.?)?\s*:?\s*([\w\d\-/\(\)]+)',
+            r'(\d{4}-\d+-\d+)',  # Format like 2023-CV-1234
+            r'(\d{2}-\d{4,6})',   # Format like 21-123456
+            r'W\.P\.\(C\)\s*(?:No\.?)?\s*([\d/]+)',  # Writ Petition format
+            r'C\.A\.\s*(?:No\.?)?\s*([\d/]+)',  # Civil Appeal format
+            r'SLP\(C\)\s*(?:No\.?)?\s*([\d/]+)',  # Special Leave Petition format
+        ]
+        
+        for pattern in case_number_patterns:
+            match = re.search(pattern, text[:3000], re.IGNORECASE)
+            if match:
+                case_metadata['Case_No'] = match.group(1).strip()
+                break
+        
+        # Look for judges
+        judge_patterns = [
+            r'(?:BEFORE|CORAM)\s*:?\s*(?:HON\'BLE\s+)?(?:JUSTICE\s+|J\.\s+)?([A-Z][A-Za-z\s,\.&]+?)(?:\n|\r|AND|$)',
+            r'(?:HON\'BLE\s+)?(?:JUSTICE|J\.)\s+([A-Z][A-Za-z\s,\.&]+?)(?:\n|\r|AND|,)',
+            r'PRESIDED\s+(?:OVER\s+)?BY\s*:?\s*([A-Z][A-Za-z\s,\.&]+?)(?:\n|\r)',
+            r'(?:BENCH|COURT)\s*:?\s*([A-Z][A-Za-z\s,\.&]+?)(?:\n|\r)',
+        ]
+        
+        judges = []
+        for pattern in judge_patterns:
+            matches = re.findall(pattern, text[:2000], re.IGNORECASE | re.MULTILINE)
+            for match in matches:
+                judge_name = match.strip().replace('HON\'BLE', '').replace('JUSTICE', '').replace('J.', '').strip()
+                if len(judge_name) > 3 and judge_name not in judges:
+                    judges.append(judge_name)
+        
+        if judges:
+            case_metadata['Judges'] = judges
+        
+        # Look for order date
+        order_date_patterns = [
+            r'(?:ORDER|JUDGMENT|DECIDED)\s+(?:ON|DATE)\s*:?\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})',
+            r'(?:DATE|DECIDED)\s*:?\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})',
+            r'DATED\s*:?\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})',
+            r'([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{4})',  # General date format
+        ]
+        
+        for pattern in order_date_patterns:
+            match = re.search(pattern, text[:1500], re.IGNORECASE)
+            if match:
+                case_metadata['Order_Date'] = match.group(1).strip()
+                break
+        
+        # Look for adjudication deadline
+        deadline_patterns = [
+            r'(?:HEARING|NEXT\s+DATE|ADJOURNED)\s+(?:TO|ON)\s*:?\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})',
+            r'(?:DEADLINE|DUE\s+DATE|LAST\s+DATE)\s*:?\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})',
+            r'(?:WITHIN|BY)\s+([0-9]{1,2}\s+(?:DAYS|WEEKS|MONTHS))',
+        ]
+        
+        for pattern in deadline_patterns:
+            match = re.search(pattern, text[:2000], re.IGNORECASE)
+            if match:
+                case_metadata['Adjudication_Deadline'] = match.group(1).strip()
+                break
+        
+        # Look for appellant
+        appellant_patterns = [
+            r'APPELLANT\s*:?\s*([A-Z][A-Za-z\s,\.&\(\)]+?)(?:\n|\r|(?:VERSUS|V\.?|VS\.?))',
+            r'PETITIONER\s*:?\s*([A-Z][A-Za-z\s,\.&\(\)]+?)(?:\n|\r|(?:VERSUS|V\.?|VS\.?))',
+            r'APPLICANT\s*:?\s*([A-Z][A-Za-z\s,\.&\(\)]+?)(?:\n|\r|(?:VERSUS|V\.?|VS\.?))',
+        ]
+        
+        for pattern in appellant_patterns:
+            match = re.search(pattern, text[:2000], re.IGNORECASE)
+            if match:
+                case_metadata['Appellant'] = match.group(1).strip()
+                break
+        
+        # Look for appellant advocate
+        appellant_advocate_patterns = [
+            r'(?:FOR\s+)?(?:APPELLANT|PETITIONER)\s*:?\s*(?:ADVOCATE\s+)?([A-Z][A-Za-z\s,\.&]+?)(?:\n|\r|FOR\s+RESPONDENT)',
+            r'ADVOCATE\s+FOR\s+(?:APPELLANT|PETITIONER)\s*:?\s*([A-Z][A-Za-z\s,\.&]+?)(?:\n|\r)',
+            r'(?:ADV\.|ADVOCATE)\s*:?\s*([A-Z][A-Za-z\s,\.&]+?)(?:\n|\r)',
+        ]
+        
+        for pattern in appellant_advocate_patterns:
+            match = re.search(pattern, text[:2000], re.IGNORECASE)
+            if match:
+                case_metadata['Appellant_Advocate'] = match.group(1).strip()
+                break
+        
+        # Look for respondents
+        respondent_patterns = [
+            r'RESPONDENT\s*:?\s*([A-Z][A-Za-z\s,\.&\(\)]+?)(?:\n|\r|$)',
+            r'(?:VERSUS|V\.?|VS\.?)\s+([A-Z][A-Za-z\s,\.&\(\)]+?)(?:\n|\r|$)',
+            r'DEFENDANT\s*:?\s*([A-Z][A-Za-z\s,\.&\(\)]+?)(?:\n|\r|$)',
+        ]
+        
+        respondents = []
+        for pattern in respondent_patterns:
+            matches = re.findall(pattern, text[:2000], re.IGNORECASE | re.MULTILINE)
+            for match in matches:
+                respondent_name = match.strip()
+                if len(respondent_name) > 3 and respondent_name not in respondents:
+                    respondents.append(respondent_name)
+        
+        if respondents:
+            case_metadata['Respondents'] = respondents
+        
+        # Look for respondent advocates
+        respondent_advocate_patterns = [
+            r'(?:FOR\s+)?RESPONDENT\s*:?\s*(?:ADVOCATE\s+)?([A-Z][A-Za-z\s,\.&]+?)(?:\n|\r|$)',
+            r'ADVOCATE\s+FOR\s+RESPONDENT\s*:?\s*([A-Z][A-Za-z\s,\.&]+?)(?:\n|\r|$)',
+        ]
+        
+        respondent_advocates = []
+        for pattern in respondent_advocate_patterns:
+            matches = re.findall(pattern, text[:2000], re.IGNORECASE | re.MULTILINE)
+            for match in matches:
+                advocate_name = match.strip()
+                if len(advocate_name) > 3 and advocate_name not in respondent_advocates:
+                    respondent_advocates.append(advocate_name)
+        
+        if respondent_advocates:
+            case_metadata['Respondent_Advocates'] = respondent_advocates
+        
+        return case_metadata
     
     @staticmethod
     def validate_document_content(text: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
