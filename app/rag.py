@@ -99,7 +99,7 @@ Answer:"""
         genai.configure(api_key=api_key)
         print(f"DEBUG: About to call Gemini with API key: {api_key[:10]}...")
         
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         print("DEBUG: Model created successfully")
         response = model.generate_content(prompt)
         print("DEBUG: Content generated successfully")
@@ -203,7 +203,7 @@ def get_answer_with_sources(query: str, top_k: int = 5) -> Dict[str, Any]:
             }
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash-exp")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         
         prompt = f"""
         Based on the following context from multiple documents, answer the query: {query}

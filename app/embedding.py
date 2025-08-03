@@ -310,27 +310,8 @@ def create_faiss_index(file_path: str, document_id: int = None, chunking_strateg
                 # Add case metadata to each chunk
                 chunk.update(case_metadata)
         
-        # Create FAISS index
-        if document_id:
-            chunk_count = embedding_manager.create_faiss_index_with_metadata(file_path, document_id, chunks)
-        else:
-            # Fallback for backward compatibility
-            chunk_contents = [chunk["content"] if isinstance(chunk, dict) else chunk for chunk in chunks]
-            embeddings = embedding_model.encode(chunk_contents)
-            embeddings = np.array(embeddings).astype('float32')
-            
-            index = faiss.IndexFlatIP(EMBEDDING_DIM)
-            faiss.normalize_L2(embeddings)
-            index.add(embeddings)
-            
-            index_file = os.path.join(INDEX_DIR, f"{os.path.basename(file_path)}.index")
-            faiss.write_index(index, index_file)
-            
-            meta_file = index_file + ".meta"
-            with open(meta_file, "wb") as f:
-                pickle.dump(chunk_contents, f)
-            
-            chunk_count = len(chunks)
+        # Create FAISS index - ALWAYS use enhanced metadata method
+        chunk_count = embedding_manager.create_faiss_index_with_metadata(file_path, document_id or 0, chunks)
         
         logger.info(f"Created FAISS index for {os.path.basename(file_path)} with {chunk_count} chunks")
         return chunk_count

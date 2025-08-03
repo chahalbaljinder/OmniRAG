@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  background-color: #343541;
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2c2d3a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #565869;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Loading animation */
+.loading-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.loading-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #9ca3af;
+  animation: loading 1.4s ease-in-out infinite both;
+}
+
+.loading-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes loading {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Message bubble animations */
+.message-appear {
+  animation: messageAppear 0.3s ease-out;
+}
+
+@keyframes messageAppear {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Input focus styles */
+.input-focus {
+  @apply ring-2 ring-blue-500 border-blue-500;
+}
+
+/* Button styles */
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+}
+
+.btn-secondary {
+  @apply bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+}
+
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+}
+
+/* Card styles */
+.card {
+  @apply bg-gray-800 rounded-lg p-4 shadow-lg border border-gray-700;
+}
+
+/* Code block styles */
+.code-block {
+  @apply bg-gray-900 rounded-lg p-4 overflow-x-auto border border-gray-700;
+}
+
+/* Sidebar styles */
+.sidebar-item {
+  @apply flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors duration-200 cursor-pointer;
+}
+
+.sidebar-item.active {
+  @apply bg-gray-700;
+}
+
+/* File upload styles */
+.file-upload-area {
+  @apply border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-gray-500 transition-colors duration-200;
+}
+
+.file-upload-area.dragover {
+  @apply border-blue-500 bg-blue-500/10;
+}
+
+/* Toast styles */
+.toast-success {
+  @apply bg-green-600 text-white;
+}
+
+.toast-error {
+  @apply bg-red-600 text-white;
+}
+
+.toast-info {
+  @apply bg-blue-600 text-white;
+}
