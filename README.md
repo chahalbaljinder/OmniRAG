@@ -19,6 +19,7 @@ A comprehensive Retrieval-Augmented Generation (RAG) pipeline that allows users 
 - **📊 Monitoring**: Health checks, metrics, system analytics
 - **🛡️ Security**: Input validation, file scanning, CORS protection
 - **🔍 Enhanced Search**: Hybrid semantic + keyword search
+- **🎨 Streamlit UI**: Comprehensive web interface for easy interaction
 
 ---
 
@@ -26,8 +27,8 @@ A comprehensive Retrieval-Augmented Generation (RAG) pipeline that allows users 
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   FastAPI        │    │   Gemini 2.0    │
-│   (Optional)    │◄──►│   REST API       │◄──►│   Flash LLM     │
+│   Streamlit UI  │    │   FastAPI        │    │   Gemini 2.0    │
+│   Web Interface │◄──►│   REST API       │◄──►│   Flash LLM     │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │                          
                               ▼                          
@@ -45,6 +46,7 @@ A comprehensive Retrieval-Augmented Generation (RAG) pipeline that allows users 
 
 ### Tech Stack
 - **API Framework**: FastAPI 0.104+
+- **Web UI**: Streamlit 1.28+ with interactive components
 - **Vector Database**: FAISS (Facebook AI Similarity Search)
 - **LLM**: Google Gemini 2.0 Flash
 - **Embeddings**: SentenceTransformers (all-MiniLM-L6-v2)
@@ -96,6 +98,37 @@ curl http://localhost:8000/health
 # API Documentation
 # Open: http://localhost:8000/docs
 ```
+
+### 5. 🎨 Launch Streamlit UI (Optional)
+
+For a user-friendly web interface:
+
+**Option A: Using Run Scripts**
+```bash
+# Windows
+run.bat
+
+# Linux/macOS
+chmod +x run.sh && ./run.sh
+```
+
+**Option B: Docker with UI Profile**
+```bash
+docker-compose --profile ui up -d
+```
+
+**Option C: Manual Setup**
+```bash
+pip install -r requirements-streamlit.txt
+streamlit run streamlit_app.py
+```
+
+**Access the UI:**
+- **Streamlit Dashboard**: http://localhost:8501
+- **API Backend**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+
+See [STREAMLIT_SETUP.md](./STREAMLIT_SETUP.md) for detailed UI setup instructions.
 
 ---
 
