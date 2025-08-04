@@ -27,32 +27,60 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 
-def get_answer(query, doc_paths, k=2):
-    if not isinstance(doc_paths, list):
-        doc_paths = [doc_paths]
+def get_answer(query, k=3):
+    """Get answer for query using all available documents"""
+    try:
+        # Get all available index files
+        if not os.path.exists(INDEX_DIR):
+            return {
+                "answer": "No documents have been indexed yet. Please upload some documents first.",
+                "sources": [],
+                "processing_time": 0.0
+            }
+        
+        all_chunks = []
+        sources = []
+        
+        # Search through all available indexes
+        for filename in os.listdir(INDEX_DIR):
+            if filename.endswith(".index"):
+                index_file = os.path.join(INDEX_DIR, filename)
+                meta_file = index_file + ".meta"
+                
+                if not os.path.exists(meta_file):
+                    continue
+                
+                try:
+                    # Load index and metadata
+                    index = faiss.read_index(index_file)
+                    with open(meta_file, "rb") as f:
+                        chunks = pickle.load(f)
+                    
+                    # Search for relevant chunks
+                    query_embedding = embedding_model.encode([query])
+                    _, indices = index.search(query_embedding, min(k, len(chunks)))
+                    
+                    # Add relevant chunks
+                    document_name = filename.replace(".index", "")
+                    for i in indices[0]:
+                        if i < len(chunks) and i >= 0:
+                            all_chunks.append(chunks[i])
+                            sources.append(document_name)
+                            
+                except Exception as e:
+                    print(f"Error processing index {filename}: {str(e)}")
+                    continue
+        
+        if not all_chunks:
+            return {
+                "answer": "No relevant content found in uploaded documents.",
+                "sources": [],
+                "processing_time": 0.0
+            }
 
-    all_chunks = []
-
-    for doc_path in doc_paths:
-        index_file = os.path.join(INDEX_DIR, os.path.basename(doc_path) + ".index")
-        if not os.path.exists(index_file):
-            continue
-
-        index = faiss.read_index(index_file)
-        with open(index_file + ".meta", "rb") as f:
-            chunks = pickle.load(f)
-
-        query_embedding = embedding_model.encode([query])
-        _, indices = index.search(query_embedding, k)
-        relevant_chunks = [chunks[i] for i in indices[0] if i < len(chunks)]
-        all_chunks.extend(relevant_chunks)
-
-    if not all_chunks:
-        return "No relevant content found across uploaded documents."
-
-    # Prepare context
-    context = "\n---\n".join(all_chunks)
-    prompt = f"""You are a helpful assistant. Use the context below to answer the question.
+        # Prepare context (limit to avoid token limits)
+        context = "\n---\n".join(all_chunks[:10])  # Limit to first 10 chunks
+        prompt = f"""You are a helpful assistant. Use the context below to answer the question.
 
 Context:
 {context}
@@ -60,24 +88,28 @@ Context:
 Question: {query}
 Answer:"""
 
-    # Call Gemini 2.0 Flash
-    try:
-        # Get API key fresh each time to ensure it's loaded
+        # Call Gemini 2.0 Flash
         api_key = os.getenv("GEMINI_API_KEY")
-        print(f"DEBUG: Fresh API key check: {'Present' if api_key else 'Missing'}")
-        
         if not api_key:
-            return "Gemini API key not configured. Please add GEMINI_API_KEY to your .env file."
+            return {
+                "answer": "Gemini API key not configured. Please add GEMINI_API_KEY to your .env file.",
+                "sources": sources,
+                "processing_time": 0.0
+            }
         
-        # Configure Gemini with fresh API key
         genai.configure(api_key=api_key)
-        print(f"DEBUG: About to call Gemini with API key: {api_key[:10]}...")
-        
         model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        print("DEBUG: Model created successfully")
         response = model.generate_content(prompt)
-        print("DEBUG: Content generated successfully")
-        return response.text
+        
+        return {
+            "answer": response.text,
+            "sources": list(set(sources[:5])),  # Unique sources, max 5
+            "processing_time": 0.0
+        }
+        
     except Exception as e:
-        print(f"DEBUG: Exception occurred: {str(e)}")
-        return f"Gemini API error: {str(e)}"
+        return {
+            "answer": f"Error processing query: {str(e)}",
+            "sources": [],
+            "processing_time": 0.0
+        }

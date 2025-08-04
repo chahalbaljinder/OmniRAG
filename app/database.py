@@ -52,8 +52,9 @@ class Document(Base):
     upload_date = Column(DateTime, default=datetime.utcnow)
     file_hash = Column(String, index=True)
     file_metadata = Column(Text)  # JSON string for additional metadata
-    owner_id = Column(Integer, ForeignKey("users.id"))
-    is_public = Column(Boolean, default=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Made nullable for basic API
+    is_public = Column(Boolean, default=True)  # Default to public for basic API
+    content = Column(Text, nullable=True)  # Add content field for basic API
     
     # Relationships
     owner = relationship("User", back_populates="documents")
@@ -84,8 +85,10 @@ class Query(Base):
     documents_used = Column(Text)  # JSON string of document IDs
     timestamp = Column(DateTime, default=datetime.utcnow)
     retrieval_score = Column(Float)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Made nullable for basic API
     search_type = Column(String, default="semantic")  # semantic, hybrid, keyword
+    response = Column(Text, nullable=True)  # Add response field for basic API
+    query_date = Column(DateTime, default=datetime.utcnow)  # Add query_date for basic API
     
     # Relationships
     user = relationship("User", back_populates="queries")

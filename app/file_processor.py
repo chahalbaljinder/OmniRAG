@@ -3,7 +3,9 @@ import os
 import json
 from datetime import datetime
 from typing import Dict, Any, Tuple, List
-from app.security import MAX_PAGES_PER_DOCUMENT
+
+# Configuration constants
+MAX_PAGES_PER_DOCUMENT = 1000
 
 class DocumentProcessor:
     @staticmethod
