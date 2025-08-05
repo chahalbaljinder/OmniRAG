@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from typing import List
 from fastapi import File, UploadFile
+import os
 
 # Import basic API only
 from app.api import router as basic_api_router
@@ -20,10 +21,16 @@ app = FastAPI(
 
 # Add security middleware (removed TrustedHostMiddleware)
 
-# Add CORS middleware
+# Add CORS middleware with Vercel frontend URL
+allowed_origins = [
+    "http://localhost:3000",  # Local development
+    "https://*.vercel.app",   # Vercel frontend
+    "*"  # Allow all for now, restrict in production
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,5 +52,6 @@ async def root():
             "Basic Query & RAG",
             "Document Management",
             "Health Monitoring"
-        ]
+        ],
+        "environment": os.getenv("VERCEL_ENV", "development")
     }

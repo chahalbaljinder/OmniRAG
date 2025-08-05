@@ -15,7 +15,13 @@
   },
   "build": {
     "env": {
-      "CI": "false"
+      "CI": "false",
+      "GENERATE_SOURCEMAP": "false"
+    }
+  },
+  "functions": {
+    "pages/api/*.js": {
+      "runtime": "nodejs18.x"
     }
   }
 }
