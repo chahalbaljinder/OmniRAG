@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 import os
 import shutil
 import time
+import json
 from datetime import datetime
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
@@ -55,7 +56,8 @@ async def upload_files(files: List[UploadFile] = File(...), db: Session = Depend
                     page_count=pdf_metadata.get("page_count", 0),
                     upload_date=datetime.utcnow(),
                     content=text,
-                    file_hash=f"hash_{int(time.time())}"  # Simple hash
+                    file_hash=f"hash_{int(time.time())}",  # Simple hash
+                    file_metadata=json.dumps(pdf_metadata)  # Store full metadata as JSON
                 )
                 
                 db.add(document)
@@ -123,6 +125,9 @@ async def query_documents(query: str = Form(...), k: int = Form(3), db: Session 
             "query": query,
             "answer": result.get("answer", ""),
             "sources": result.get("sources", []),
+            "page_references": result.get("page_references", []),
+            "total_chunks_found": result.get("total_chunks_found", 0),
+            "query_type": result.get("query_type", "basic"),
             "processing_time": result.get("processing_time", 0.0),
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -242,3 +247,186 @@ async def get_statistics(db: Session = Depends(get_db)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
+
+@router.delete("/documents/{document_id}")
+async def delete_document(document_id: int, db: Session = Depends(get_db)):
+    """Delete a specific document and its associated index"""
+    try:
+        # Find the document
+        document = db.query(Document).filter(Document.id == document_id).first()
+        
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        document_filename = document.filename
+        
+        # Delete associated index files
+        index_file = os.path.join(PROJECT_ROOT, "indexes", f"{document_filename}.index")
+        meta_file = index_file + ".meta"
+        
+        deleted_files = []
+        if os.path.exists(index_file):
+            os.remove(index_file)
+            deleted_files.append(f"{document_filename}.index")
+        
+        if os.path.exists(meta_file):
+            os.remove(meta_file)
+            deleted_files.append(f"{document_filename}.index.meta")
+        
+        # Delete the actual file
+        if os.path.exists(document.file_path):
+            os.remove(document.file_path)
+            deleted_files.append(document_filename)
+        
+        # Delete from database
+        db.delete(document)
+        db.commit()
+        
+        return {
+            "message": f"Document '{document_filename}' deleted successfully",
+            "document_id": document_id,
+            "deleted_files": deleted_files,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}")
+
+@router.delete("/knowledge-base")
+async def clear_knowledge_base(db: Session = Depends(get_db)):
+    """Clear all documents, embeddings, and knowledge base"""
+    try:
+        # Get all documents before deletion for response
+        documents = db.query(Document).all()
+        document_count = len(documents)
+        
+        # Delete all index files
+        indexes_dir = os.path.join(PROJECT_ROOT, "indexes")
+        deleted_indexes = []
+        
+        if os.path.exists(indexes_dir):
+            for filename in os.listdir(indexes_dir):
+                file_path = os.path.join(indexes_dir, filename)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    deleted_indexes.append(filename)
+        
+        # Delete all uploaded files
+        uploads_dir = os.path.join(PROJECT_ROOT, "uploads")
+        deleted_uploads = []
+        
+        if os.path.exists(uploads_dir):
+            for filename in os.listdir(uploads_dir):
+                file_path = os.path.join(uploads_dir, filename)
+                if os.path.isfile(file_path) and filename.endswith('.pdf'):
+                    os.remove(file_path)
+                    deleted_uploads.append(filename)
+        
+        # Delete all documents from database
+        db.query(Document).delete()
+        
+        # Also delete all query records
+        try:
+            db.query(Query).delete()
+            query_records_deleted = True
+        except:
+            query_records_deleted = False
+        
+        db.commit()
+        
+        return {
+            "message": "Knowledge base cleared successfully",
+            "deleted_documents": document_count,
+            "deleted_index_files": len(deleted_indexes),
+            "deleted_upload_files": len(deleted_uploads),
+            "query_records_cleared": query_records_deleted,
+            "details": {
+                "index_files": deleted_indexes,
+                "upload_files": deleted_uploads
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to clear knowledge base: {str(e)}")
+
+@router.get("/document/{document_id}/metadata")
+async def get_document_metadata(document_id: int, db: Session = Depends(get_db)):
+    """Get detailed metadata for a specific document including law-specific information"""
+    try:
+        # Find the document
+        document = db.query(Document).filter(Document.id == document_id).first()
+        
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Parse stored metadata
+        metadata = {}
+        if document.file_metadata:
+            try:
+                import json
+                metadata = json.loads(document.file_metadata)
+            except:
+                metadata = {}
+        
+        # Get fresh metadata from file if it still exists
+        if os.path.exists(document.file_path):
+            try:
+                from app.file_processor import DocumentProcessor
+                _, fresh_metadata = DocumentProcessor.extract_text_from_pdf(document.file_path)
+                metadata.update(fresh_metadata)
+            except Exception as e:
+                metadata["metadata_extraction_error"] = str(e)
+        
+        response = {
+            "document_id": document.id,
+            "filename": document.filename,
+            "file_size": document.file_size,
+            "page_count": document.page_count,
+            "upload_date": document.upload_date.isoformat() if document.upload_date else None,
+            "metadata": metadata,
+            "law_analysis": {
+                "document_type": metadata.get("document_type", "unknown"),
+                "law_summary": metadata.get("law_summary", {}),
+                "has_law_metadata": bool(metadata.get("page_details", []) and 
+                                       any(page.get("law_metadata") for page in metadata.get("page_details", [])))
+            }
+        }
+        
+        # Add page-wise law metadata summary
+        if metadata.get("page_details"):
+            law_elements = {
+                "case_numbers": set(),
+                "courts": set(),
+                "judges": set(),
+                "legal_sections": []
+            }
+            
+            for page in metadata.get("page_details", []):
+                page_law_data = page.get("law_metadata", {})
+                if page_law_data:
+                    for case_num in page_law_data.get("case_numbers", []):
+                        law_elements["case_numbers"].add(case_num)
+                    for court in page_law_data.get("courts", []):
+                        law_elements["courts"].add(court)
+                    for judge in page_law_data.get("judges", []):
+                        law_elements["judges"].add(judge)
+                    law_elements["legal_sections"].extend(page_law_data.get("legal_sections", []))
+            
+            response["law_analysis"]["extracted_elements"] = {
+                "case_numbers": list(law_elements["case_numbers"]),
+                "courts": list(law_elements["courts"]),
+                "judges": list(law_elements["judges"]),
+                "legal_sections": law_elements["legal_sections"]
+            }
+        
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get document metadata: {str(e)}")

@@ -128,32 +128,40 @@ class EnhancedEmbeddingManager:
 embedding_manager = EnhancedEmbeddingManager()
 
 def create_faiss_index(file_path: str, document_id: int = None, chunking_strategy: str = "word") -> int:
-    """Create FAISS index for a document with enhanced features"""
-    from PyPDF2 import PdfReader
+    """Create FAISS index for a document with enhanced features and metadata"""
+    from app.file_processor import DocumentProcessor
+    from app.utils import chunk_text_with_metadata
     
     try:
-        # Extract text from PDF
-        reader = PdfReader(file_path)
-        full_text = "\n".join(page.extract_text() or "" for page in reader.pages)
-
-        # Create chunks with metadata
-        if isinstance(chunk_text(full_text), list) and len(chunk_text(full_text)) > 0:
-            if isinstance(chunk_text(full_text)[0], dict):
-                chunks = chunk_text(full_text, strategy=chunking_strategy)
-            else:
-                # Legacy format - convert to new format
-                chunk_list = chunk_text(full_text)
-                chunks = [{"content": chunk, "chunk_id": i, "word_count": len(chunk.split())} 
-                         for i, chunk in enumerate(chunk_list)]
+        # Extract text and metadata from PDF
+        full_text, metadata = DocumentProcessor.extract_text_from_pdf(file_path)
+        
+        # Use enhanced chunking with page metadata
+        page_contents = metadata.get('page_contents', [])
+        if page_contents:
+            chunks = chunk_text_with_metadata(page_contents)
         else:
-            chunks = chunk_text(full_text, strategy=chunking_strategy)
+            # Fallback to simple chunking
+            from app.utils import chunk_text
+            simple_chunks = chunk_text(full_text, strategy=chunking_strategy)
+            chunks = simple_chunks
         
         # Create FAISS index
-        if document_id:
+        if document_id and len(chunks) > 0:
             chunk_count = embedding_manager.create_faiss_index_with_metadata(file_path, document_id, chunks)
         else:
             # Fallback for backward compatibility
-            chunk_contents = [chunk["content"] if isinstance(chunk, dict) else chunk for chunk in chunks]
+            chunk_contents = []
+            for chunk in chunks:
+                if isinstance(chunk, dict):
+                    chunk_contents.append(chunk.get('content', str(chunk)))
+                else:
+                    chunk_contents.append(str(chunk))
+            
+            if not chunk_contents:
+                logger.warning(f"No valid chunks to index for {file_path}")
+                return 0
+            
             embeddings = embedding_model.encode(chunk_contents)
             embeddings = np.array(embeddings).astype('float32')
             
@@ -166,7 +174,7 @@ def create_faiss_index(file_path: str, document_id: int = None, chunking_strateg
             
             meta_file = index_file + ".meta"
             with open(meta_file, "wb") as f:
-                pickle.dump(chunk_contents, f)
+                pickle.dump(chunks, f)  # Store full chunk objects with metadata
             
             chunk_count = len(chunks)
         
