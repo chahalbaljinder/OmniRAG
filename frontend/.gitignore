@@ -101,3 +101,11 @@ Thumbs.db
 
 # React specific
 .eslintrc.js
+
+# Deployment platforms
+.vercel
+.netlify
+
+# Source maps in production
+/build/static/js/*.map
+/build/static/css/*.map

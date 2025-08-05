@@ -1,8 +1,33 @@
 # RAG Pipeline React UI
 
-A modern React-based user interface for the RAG (Retrieval-Augmented Generation) Pipeline system.
+A modern React-based user interface for the RAG (Retrieval-Augmented Generation) Pipeline system, optimized for free-tier deployment.
 
-## Features
+## 🚀 Quick Start
+
+### Development
+```bash
+cd frontend
+npm install
+npm start
+```
+
+### Production Build
+```bash
+npm run build:prod
+npm run serve
+```
+
+## 🌐 Deployment Ready
+
+This app is configured for free-tier deployment on:
+- **Netlify** (Recommended) - 100GB bandwidth/month
+- **Vercel** - Unlimited personal projects  
+- **GitHub Pages** - Completely free
+- **Firebase Hosting** - 10GB storage/month
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed setup instructions.
+
+## ✨ Features
 
 - **Dashboard**: Overview of system status and quick actions
 - **Document Upload**: Drag-and-drop PDF upload with progress tracking
@@ -10,26 +35,30 @@ A modern React-based user interface for the RAG (Retrieval-Augmented Generation)
 - **Document Management**: View, organize, and delete documents with metadata inspection
 - **Statistics**: System performance monitoring and usage analytics
 - **Real-time Health Monitoring**: API status and system health indicators
+- **Mobile Responsive**: Works perfectly on all devices
+- **Production Optimized**: Code splitting, caching, and performance optimization
 
-## Quick Start
+## 🛠️ Tech Stack
 
-1. **Install Dependencies**
-   ```bash
-   cd frontend
-   npm install
-   ```
+- **React 18** with modern hooks
+- **React Router** for navigation
+- **Axios** for API communication
+- **Tailwind CSS** for styling
+- **Lucide React** icons
+- **React Hot Toast** notifications
+- **React Dropzone** file uploads
 
-2. **Start Development Server**
-   ```bash
-   npm start
-   ```
-   
-   The app will open at `http://localhost:3000`
+## 🔧 Configuration
 
-3. **Ensure Backend is Running**
-   Make sure your RAG API is running on `http://localhost:8001`
+### Environment Variables
+Create `.env` file (copy from `.env.example`):
+```bash
+REACT_APP_API_URL=http://localhost:8001  # Development
+REACT_APP_API_URL=https://your-api.com   # Production
+REACT_APP_ENVIRONMENT=development
+```
 
-## API Integration
+### API Integration
 
 The UI connects to the following endpoints:
 
@@ -43,7 +72,7 @@ The UI connects to the following endpoints:
 - `DELETE /documents/{id}` - Delete document
 - `DELETE /knowledge-base` - Clear all documents
 
-## Law Document Features
+## ⚖️ Law Document Features
 
 The UI includes special support for law documents:
 
