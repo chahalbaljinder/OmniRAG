@@ -21,6 +21,18 @@
 vercel --prod
 ```
 
+**If you encounter issues with the current vercel.json, try the alternative:**
+```bash
+# Backup current config
+mv vercel.json vercel-builds.json
+
+# Use the alternative config
+mv vercel-alternative.json vercel.json
+
+# Deploy again
+vercel --prod
+```
+
 ### 2. Set Environment Variables
 
 After the first deployment, set the required environment variables:
@@ -32,14 +44,14 @@ vercel env add GEMINI_API_KEY
 vercel env add DATABASE_URL
 # Enter: sqlite:///tmp/rag_pipeline.db
 
-vercel env add REDIS_URL
+vercel env add REDIS_URL  
 # Enter: redis://localhost:6379/0 (or use Vercel KV)
 
 vercel env add REDIS_ENABLED
 # Enter: false (for now, or true if using Vercel KV)
 
 vercel env add SECRET_KEY
-# Enter a secure random string
+# Enter a secure random string (generate with: openssl rand -hex 32)
 
 vercel env add ALGORITHM
 # Enter: HS256
@@ -54,10 +66,10 @@ vercel env add CACHE_TTL
 # Enter: 3600
 
 vercel env add MAX_CHUNK_SIZE
-# Enter: 1000
+# Enter: 800
 
 vercel env add OVERLAP_SIZE
-# Enter: 200
+# Enter: 150
 
 vercel env add LOG_LEVEL
 # Enter: INFO

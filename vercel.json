@@ -1,60 +1,59 @@
 {
   "version": 2,
-  "name": "rag-pipeline",
   "builds": [
     {
-      "src": "app/main.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/health",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/docs",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/redoc",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/openapi.json",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/upload",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/query",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/documents",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/documents/(.*)",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/document/(.*)",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/stats",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/knowledge-base",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/(.*)",
-      "dest": "app/main.py"
+      "dest": "api/index.py"
     }
   ],
   "env": {
@@ -71,10 +70,5 @@
     "OVERLAP_SIZE": "@overlap_size",
     "LOG_LEVEL": "@log_level",
     "PYTHONPATH": "/var/task"
-  },
-  "functions": {
-    "app/main.py": {
-      "maxDuration": 30
-    }
   }
 }
