@@ -172,3 +172,41 @@ def calculate_similarity_score(query_embedding, chunk_embedding) -> float:
 def log_performance(operation: str, duration: float, **kwargs):
     """Log performance metrics"""
     logger.info(f"Performance: {operation} took {duration:.3f}s", extra=kwargs)
+
+def chunk_text_with_metadata(page_contents: List[Dict[str, Any]], max_length: int = 800, overlap: int = 100) -> List[Dict[str, Any]]:
+    """
+    Chunk text while preserving page metadata for better context tracking.
+    
+    Args:
+        page_contents: List of page dictionaries with content and metadata
+        max_length: Maximum length of each chunk
+        overlap: Overlap between chunks
+    
+    Returns:
+        List of chunk dictionaries with page attribution
+    """
+    chunks = []
+    
+    for page_info in page_contents:
+        page_number = page_info.get('page_number', 1)
+        content = page_info.get('content', '')
+        law_metadata = page_info.get('law_metadata', {})
+        
+        if not content.strip():
+            continue
+        
+        # Chunk the page content
+        page_chunks = chunk_text(content, max_length, overlap)
+        
+        # Add page information to each chunk
+        for chunk_info in page_chunks:
+            enhanced_chunk = chunk_info.copy()
+            enhanced_chunk.update({
+                'page_number': page_number,
+                'law_metadata': law_metadata,
+                'source_page': page_number
+            })
+            chunks.append(enhanced_chunk)
+    
+    logger.info(f"Created {len(chunks)} chunks from {len(page_contents)} pages with metadata")
+    return chunks

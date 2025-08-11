@@ -1,0 +1,9 @@
+@echo off
+echo Starting RAG Pipeline React Frontend...
+echo.
+echo First, installing dependencies...
+call npm install
+echo.
+echo Starting development server...
+call npm start
+pause

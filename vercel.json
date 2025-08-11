@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/health",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/docs",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/redoc",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/openapi.json",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/upload",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/query",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/documents",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/documents/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/document/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/stats",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/knowledge-base",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "api/index.py"
+    }
+  ],
+  "env": {
+    "GEMINI_API_KEY": "@gemini_api_key",
+    "DATABASE_URL": "@database_url",
+    "REDIS_URL": "@redis_url",
+    "REDIS_ENABLED": "@redis_enabled",
+    "SECRET_KEY": "@secret_key",
+    "ALGORITHM": "@algorithm",
+    "ACCESS_TOKEN_EXPIRE_MINUTES": "@access_token_expire_minutes",
+    "ENABLE_CACHING": "@enable_caching",
+    "CACHE_TTL": "@cache_ttl",
+    "MAX_CHUNK_SIZE": "@max_chunk_size",
+    "OVERLAP_SIZE": "@overlap_size",
+    "LOG_LEVEL": "@log_level",
+    "PYTHONPATH": "/var/task"
+  }
+}
