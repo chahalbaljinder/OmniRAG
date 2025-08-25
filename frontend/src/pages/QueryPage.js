@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Clock, FileText, Hash, Scale } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import apiService from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -148,9 +150,12 @@ const QueryPage = () => {
             </div>
             <div className="p-6">
               <div className="prose max-w-none">
-                <div className="text-gray-900 whitespace-pre-wrap">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  className="markdown-content"
+                >
                   {results.answer}
-                </div>
+                </ReactMarkdown>
               </div>
 
               {/* Metadata */}
