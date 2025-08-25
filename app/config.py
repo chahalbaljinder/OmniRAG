@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     app_version: str = "2.0.0"
     debug: bool = False
     
-    # Database Configuration
-    database_url: str = "sqlite:///./rag_database.db"
+    # Database Configuration - Vercel compatible
+    database_url: str = "sqlite:///tmp/rag_database.db"  # Use /tmp for Vercel
     
     # Authentication Configuration
     jwt_secret_key: Optional[str] = None
@@ -22,31 +22,31 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
-    # Redis Configuration
+    # Redis Configuration - Disabled by default for Vercel
     redis_url: str = "redis://localhost:6379/0"
     redis_enabled: bool = False
     
-    # File Upload Configuration
-    max_upload_size: int = 100 * 1024 * 1024  # 100MB
-    max_files_per_request: int = 20
-    max_pages_per_document: int = 1000
-    upload_directory: str = "uploads"
-    index_directory: str = "indexes"
+    # File Upload Configuration - Vercel compatible
+    max_upload_size: int = 50 * 1024 * 1024  # 50MB for Vercel limits
+    max_files_per_request: int = 10  # Reduced for serverless
+    max_pages_per_document: int = 500  # Reduced for serverless
+    upload_directory: str = "/tmp/uploads"  # Use /tmp for Vercel
+    index_directory: str = "/tmp/indexes"  # Use /tmp for Vercel
     
     # LLM Configuration
     gemini_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     default_llm_provider: str = "gemini"
     
-    # RAG Configuration
+    # RAG Configuration - Optimized for serverless
     embedding_model: str = "all-MiniLM-L6-v2"
-    chunk_size: int = 800
+    chunk_size: int = 600  # Smaller chunks for faster processing
     chunk_overlap: int = 100
     chunking_strategy: str = "word"  # word, sentence, paragraph
     similarity_threshold: float = 0.1
-    max_search_results: int = 5
-    max_chunk_size: int = 1000
-    overlap_size: int = 200
+    max_search_results: int = 3  # Reduced for faster response
+    max_chunk_size: int = 800  # Reduced for serverless
+    overlap_size: int = 150  # Reduced for serverless
     
     # Rate Limiting
     rate_limit_uploads: str = "10/minute"

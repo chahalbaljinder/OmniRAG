@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+  
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+  
+  .card {
+    @apply rounded-lg border border-gray-200 bg-white shadow-sm;
+  }
+  
+  .input {
+    @apply flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Custom markdown styles for better rendering */
+  .markdown-content {
+    color: #111827;
+    line-height: 1.625;
+  }
+  
+  .markdown-content strong {
+    font-weight: 700;
+    color: #111827;
+  }
+  
+  .markdown-content em {
+    font-style: italic;
+    color: #1f2937;
+  }
+  
+  .markdown-content ul {
+    list-style-type: disc;
+    list-style-position: inside;
+    margin-bottom: 1rem;
+  }
+  
+  .markdown-content ul li {
+    margin-bottom: 0.25rem;
+  }
+  
+  .markdown-content ol {
+    list-style-type: decimal;
+    list-style-position: inside;
+    margin-bottom: 1rem;
+  }
+  
+  .markdown-content ol li {
+    margin-bottom: 0.25rem;
+  }
+  
+  .markdown-content li {
+    margin-left: 1rem;
+    color: #111827;
+  }
+  
+  .markdown-content p {
+    margin-bottom: 1rem;
+    color: #111827;
+  }
+  
+  .markdown-content h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.75rem;
+  }
+  
+  .markdown-content h2 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+  }
+  
+  .markdown-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.5rem;
+  }
+}
